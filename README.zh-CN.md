@@ -1,8 +1,24 @@
-[English](./README.md) | 简体中文
+<div align="right">
+  <a href="./README.md">English</a> ·
+  <a href="./README.zh-CN.md"><strong>简体中文</strong></a>
+</div>
 
-# UniChat 智能合约
+<h1 align="center">UniChat 智能合约</h1>
 
-面向去中心化社交平台的区块链通信与社区管理合约套件。
+<p align="center">
+  面向去中心化社交平台的区块链通信与社区管理合约套件。
+</p>
+
+<p align="center">
+  <a href="./README.md">
+    <img alt="Language: English" src="https://img.shields.io/badge/Language-English-blue">
+  </a>
+  <a href="./README.zh-CN.md">
+    <img alt="语言：简体中文" src="https://img.shields.io/badge/%E8%AF%AD%E8%A8%80-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red">
+  </a>
+</p>
+
+---
 
 ## 目录
 
