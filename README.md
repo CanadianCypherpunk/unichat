@@ -1,3 +1,5 @@
+English | [简体中文](./README.zh-CN.md)
+
 # UniChat Smart Contracts
 
 A comprehensive suite of blockchain-based communication and community management contracts for building decentralized social platforms.
