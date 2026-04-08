@@ -7,6 +7,8 @@ One-time Merkle airdrop claim with permanent inviter binding, on-chain group joi
 ## Table of Contents
 
 - [Overview](#overview)
+- [Public Snapshot (31.10M Airdrop)](#public-snapshot-3110m-airdrop)
+- [Rebuilding the Merkle Tree Locally](#rebuilding-the-merkle-tree-locally)
 - [OZT Proof](#ozt-proof)
 - [Architecture](#architecture)
 - [Contract Reference](#contract-reference)
@@ -24,6 +26,99 @@ The AirdropGroup module provides:
 - **OZT-compliant minting**: Only the claim contract can mint; token owner can renounce/transfer to burn address so the project has no minting power.
 
 Optional controls: blacklist, max invitees per inviter (0 = unlimited), and Merkle root freeze (irreversible).
+
+---
+
+## Public Snapshot (31.10M Airdrop)
+
+The following data is disclosed for the current **31.10 million** airdrop snapshot so anyone can independently verify the distribution source data and recompute the Merkle root:
+
+- **Merkle root**: `0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`
+- **Original address archive**: [Download ZIP](https://aqua-biological-spider-837.mypinata.cloud/ipfs/bafybeibi3on6bmczzutq73y3jrsroobr6lp5sxcxtptzltv6ez56jv77pa)
+
+Anyone may download the original address archive, rebuild the Merkle tree locally, and compare the computed root with the on-chain root published by the claim contract.
+
+### Rebuilding the Merkle Tree Locally
+
+The published archive is a ZIP file containing CSV address data. After extracting the ZIP, read the CSV file locally and rebuild the root with the same rules used by the airdrop snapshot:
+
+- Normalize every address to lowercase and validate it as an EVM address.
+- Build each leaf as `keccak256(abi.encode(address))`.
+- For each parent node, sort the two child hashes by byte order first, then hash with `keccak256(abi.encodePacked(bytes32, bytes32))`.
+- If a level has an odd number of nodes, promote the last node unchanged to the next level.
+
+Core logic example:
+
+```ts
+import fs from "node:fs/promises";
+import { encodeAbiParameters, isAddress, keccak256 } from "viem";
+
+function normalizeLowerAddress(address: string): `0x${string}` {
+  const normalized = address.trim().toLowerCase();
+  if (!isAddress(normalized)) {
+    throw new Error(`invalid address: ${address}`);
+  }
+  return normalized as `0x${string}`;
+}
+
+function buildLeaf(address: `0x${string}`): `0x${string}` {
+  return keccak256(encodeAbiParameters([{ type: "address" }], [address]));
+}
+
+function hashPairSorted(left: `0x${string}`, right: `0x${string}`): `0x${string}` {
+  const leftBytes = Buffer.from(left.slice(2), "hex");
+  const rightBytes = Buffer.from(right.slice(2), "hex");
+  const pair =
+    Buffer.compare(leftBytes, rightBytes) <= 0
+      ? Buffer.concat([leftBytes, rightBytes])
+      : Buffer.concat([rightBytes, leftBytes]);
+
+  return keccak256(`0x${pair.toString("hex")}`);
+}
+
+function buildMerkleRoot(addresses: string[]): `0x${string}` {
+  let level = addresses.map((address) => buildLeaf(normalizeLowerAddress(address)));
+  if (level.length === 0) {
+    throw new Error("empty address list");
+  }
+
+  while (level.length > 1) {
+    const nextLevel: `0x${string}`[] = [];
+
+    for (let i = 0; i < level.length; i += 2) {
+      if (i + 1 >= level.length) {
+        nextLevel.push(level[i]);
+      } else {
+        nextLevel.push(hashPairSorted(level[i], level[i + 1]));
+      }
+    }
+
+    level = nextLevel;
+  }
+
+  return level[0];
+}
+
+async function main() {
+  // Extract the ZIP first, then point this to the CSV file inside it.
+  const csvText = await fs.readFile("./addresses.csv", "utf8");
+  const lines = csvText.split(/\r?\n/).filter(Boolean);
+  const [header, ...rows] = lines;
+  const headers = header.split(",").map((item) => item.trim().toLowerCase());
+  const walletAddressIndex = headers.indexOf("wallet_address");
+
+  const addresses = rows.map((line) => {
+    const columns = line.split(",");
+    return walletAddressIndex >= 0 ? columns[walletAddressIndex] : columns[0];
+  });
+
+  console.log(buildMerkleRoot(addresses));
+}
+
+await main();
+```
+
+If the output equals `0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`, then the local reconstruction matches the published snapshot.
 
 ---
 

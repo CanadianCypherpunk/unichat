@@ -7,6 +7,8 @@
 ## 目录
 
 - [概述](#概述)
+- [本次 3110 万空投公开信息](#本次-3110-万空投公开信息)
+- [本地重构默克尔树](#本地重构默克尔树)
 - [OZT 证明](#ozt-证明)
 - [架构](#架构)
 - [合约说明](#合约说明)
@@ -24,6 +26,99 @@ AirdropGroup 模块提供：
 - **符合 OZT 的铸造**：仅领取合约可铸造；代币 Owner 可放弃或转至黑洞地址，使项目方不再拥有任何铸造权。
 
 可选控制：黑名单、每邀请人最大被邀请数（0 表示不限制）、Merkle 根冻结（不可逆）。
+
+---
+
+## 本次 3110 万空投公开信息
+
+以下数据为本次 **3110 万** 空投快照的公开信息，任何人都可以据此独立校验分发源数据并重新计算默克尔树根：
+
+- **Merkle 根**：`0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`
+- **原始地址压缩包下载**：[点击下载 ZIP](https://aqua-biological-spider-837.mypinata.cloud/ipfs/bafybeibi3on6bmczzutq73y3jrsroobr6lp5sxcxtptzltv6ez56jv77pa)
+
+任何人都可以下载原始地址压缩包，在本地重新构建默克尔树，并将计算结果与领取合约链上公布的根进行对比验证。
+
+### 本地重构默克尔树
+
+公开下载文件是一个 ZIP 压缩包，里面包含 CSV 地址数据。将 ZIP 解压后，可在本地按与本次空投快照一致的规则重建默克尔树根：
+
+- 先将每个地址统一转为小写，并校验其是否为合法 EVM 地址。
+- 每个叶子节点使用 `keccak256(abi.encode(address))` 生成。
+- 每个父节点先对子节点哈希按字节序排序，再执行 `keccak256(abi.encodePacked(bytes32, bytes32))`。
+- 若某一层节点数为奇数，则最后一个节点原样提升到上一层。
+
+核心逻辑示例：
+
+```ts
+import fs from "node:fs/promises";
+import { encodeAbiParameters, isAddress, keccak256 } from "viem";
+
+function normalizeLowerAddress(address: string): `0x${string}` {
+  const normalized = address.trim().toLowerCase();
+  if (!isAddress(normalized)) {
+    throw new Error(`invalid address: ${address}`);
+  }
+  return normalized as `0x${string}`;
+}
+
+function buildLeaf(address: `0x${string}`): `0x${string}` {
+  return keccak256(encodeAbiParameters([{ type: "address" }], [address]));
+}
+
+function hashPairSorted(left: `0x${string}`, right: `0x${string}`): `0x${string}` {
+  const leftBytes = Buffer.from(left.slice(2), "hex");
+  const rightBytes = Buffer.from(right.slice(2), "hex");
+  const pair =
+    Buffer.compare(leftBytes, rightBytes) <= 0
+      ? Buffer.concat([leftBytes, rightBytes])
+      : Buffer.concat([rightBytes, leftBytes]);
+
+  return keccak256(`0x${pair.toString("hex")}`);
+}
+
+function buildMerkleRoot(addresses: string[]): `0x${string}` {
+  let level = addresses.map((address) => buildLeaf(normalizeLowerAddress(address)));
+  if (level.length === 0) {
+    throw new Error("empty address list");
+  }
+
+  while (level.length > 1) {
+    const nextLevel: `0x${string}`[] = [];
+
+    for (let i = 0; i < level.length; i += 2) {
+      if (i + 1 >= level.length) {
+        nextLevel.push(level[i]);
+      } else {
+        nextLevel.push(hashPairSorted(level[i], level[i + 1]));
+      }
+    }
+
+    level = nextLevel;
+  }
+
+  return level[0];
+}
+
+async function main() {
+  // 先解压 ZIP，再把路径指向其中的 CSV 文件。
+  const csvText = await fs.readFile("./addresses.csv", "utf8");
+  const lines = csvText.split(/\r?\n/).filter(Boolean);
+  const [header, ...rows] = lines;
+  const headers = header.split(",").map((item) => item.trim().toLowerCase());
+  const walletAddressIndex = headers.indexOf("wallet_address");
+
+  const addresses = rows.map((line) => {
+    const columns = line.split(",");
+    return walletAddressIndex >= 0 ? columns[walletAddressIndex] : columns[0];
+  });
+
+  console.log(buildMerkleRoot(addresses));
+}
+
+await main();
+```
+
+若最终输出结果为 `0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`，则说明本地重构结果与公开快照一致。
 
 ---
 
