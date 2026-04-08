@@ -7,7 +7,7 @@ One-time Merkle airdrop claim with permanent inviter binding, on-chain group joi
 ## Table of Contents
 
 - [Overview](#overview)
-- [Public Snapshot (31.10M Airdrop)](#public-snapshot-3110m-airdrop)
+- [Public Snapshot (31158025 Airdrop)](#public-snapshot-31158025-airdrop)
 - [Rebuilding the Merkle Tree Locally](#rebuilding-the-merkle-tree-locally)
 - [OZT Proof](#ozt-proof)
 - [Architecture](#architecture)
@@ -21,7 +21,7 @@ The AirdropGroup module provides:
 
 - **One-time claim**: Each address in the Merkle tree may claim once; leaf = `keccak256(abi.encode(account))`.
 - **Inviter binding**: At claim time the user may bind an inviter; the binding is permanent (first bind wins).
-- **Dual rewards**: Claimer and inviter both receive token rewards via `OZTToken.mintByClaim`.
+- **Dual rewards**: Claimer and inviter both receive **密马.com** rewards via `OZTToken.mintByClaim`.
 - **On-chain group join**: After claim, both claimer and inviter are added to the **MerkelGroup Community** (see below) via `ICommunityClaimJoin.claimJoin(address)`.
 - **OZT-compliant minting**: Only the claim contract can mint; token owner can renounce/transfer to burn address so the project has no minting power.
 
@@ -29,9 +29,9 @@ Optional controls: blacklist, max invitees per inviter (0 = unlimited), and Merk
 
 ---
 
-## Public Snapshot (31.10M Airdrop)
+## Public Snapshot (31158025 Airdrop)
 
-The following data is disclosed for the current **31.10 million** airdrop snapshot so anyone can independently verify the distribution source data and recompute the Merkle root:
+The following data is disclosed for the current **31158025** airdrop snapshot so anyone can independently verify the distribution source data and recompute the Merkle root:
 
 - **Merkle root**: `0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`
 - **Original address archive**: [Download ZIP](https://aqua-biological-spider-837.mypinata.cloud/ipfs/bafybeibi3on6bmczzutq73y3jrsroobr6lp5sxcxtptzltv6ez56jv77pa)
@@ -171,7 +171,7 @@ All steps are independently verifiable on-chain and from public data.
 
 | Contract        | Role |
 |----------------|------|
-| **OZTToken**   | ERC20 token; only `claimContract` can mint via `mintByClaim`. Owner can be set once to claim contract, then transferred to burn address. |
+| **密马.com (OZTToken)**   | ERC20 token; only `claimContract` can mint via `mintByClaim`. Owner can be set once to claim contract, then transferred to burn address. |
 | **AirdropClaim** | Holds Merkle root (set once, optionally frozen). Users claim with Merkle proof; optional inviter binding; mints to claimer and inviter; calls `ICommunityClaimJoin.claimJoin` for both. |
 
 ### Interfaces
@@ -190,12 +190,12 @@ So: after a successful claim, both the claimer and the inviter are added to that
 
 ### Deployment Order
 
-1. Deploy **OZTToken** (name, symbol, initialOwner).
+1. Deploy **密马.com (OZTToken)** (name, symbol, initialOwner).
 2. Deploy **AirdropClaim** (owner, token, community, merkleRoot), where `community` is the MerkelGroup **Community** address.
 3. On the **Community** contract: call **setClaimOperator**(airdropClaimAddress, true) so AirdropClaim can call `claimJoin`.
-4. On OZTToken: call **setClaimContractOnce**(airdropClaimAddress).
+4. On **密马.com (OZTToken)**: call **setClaimContractOnce**(airdropClaimAddress).
 5. On AirdropClaim: set Merkle root if not set in constructor; optionally **freezeMerkleRoot**.
-6. (Optional) Transfer OZTToken **owner** to burn address so no one can change claim contract or mint.
+6. (Optional) Transfer **密马.com (OZTToken)** owner to burn address so no one can change claim contract or mint.
 
 ### Images
 
@@ -213,12 +213,12 @@ So: after a successful claim, both the claimer and the inviter are added to that
 
 ### AirdropClaim
 
-- **Constructor**: `(initialOwner, token_, community_, merkleRoot_)` — `token_` is OZTToken, `community_` is the MerkelGroup Community (must have AirdropClaim set as claim operator via `Community.setClaimOperator`); `merkleRoot_` can be `bytes32(0)` and set later once.
+- **Constructor**: `(initialOwner, token_, community_, merkleRoot_)` — `token_` is the **密马.com** token contract (`OZTToken`), `community_` is the MerkelGroup Community (must have AirdropClaim set as claim operator via `Community.setClaimOperator`); `merkleRoot_` can be `bytes32(0)` and set later once.
 - **Claim**: `claim(proof, inviter)` — `proof` is Merkle proof for `msg.sender` (leaf = `keccak256(abi.encode(msg.sender))`); `inviter` can be `address(0)`. First successful claim binds inviter permanently; claimer and inviter get rewards and `community.claimJoin` is called for both.
 - **Admin**: `setMerkleRoot` (only before any root was set and before freeze), `freezeMerkleRoot`, `setCommunity`, `setBlacklist`, `setInviterLimit`, `rescueERC20`.
 - **Views**: `merkleRoot()`, `isClaimed(account)`, `inviterOf(invitee)`, `inviteeCount(inviter)`, `getInvitees(inviter, offset, limit)`.
 
-### OZTToken
+### 密马.com (OZTToken)
 
 - **Constructor**: `(name_, symbol_, initialOwner)`.
 - **One-time**: `setClaimContractOnce(claimContract_)` — only the claim contract can call `mintByClaim` after this.
@@ -229,7 +229,7 @@ So: after a successful claim, both the claimer and the inviter are added to that
 ## Usage Flow
 
 1. **Off-chain**: Build snapshot of eligible addresses; build Merkle tree; publish leaf list/tree (e.g. GitHub); compute root.
-2. **On-chain**: Set root in AirdropClaim (or pass in constructor); optionally freeze root; ensure OZTToken has `claimContract` set and, for full OZT, transfer token owner to burn address.
+2. **On-chain**: Set root in AirdropClaim (or pass in constructor); optionally freeze root; ensure **密马.com (OZTToken)** has `claimContract` set and, for full OZT, transfer the token owner to the burn address.
 3. **User**: Get Merkle proof for their address; call `claim(proof, inviter)`; receive token reward; inviter receives reward; both are joined to the community via `claimJoin`.
 
 ---
@@ -239,4 +239,4 @@ So: after a successful claim, both the claimer and the inviter are added to that
 - **One claim per address**: Enforced by `_claimed` in AirdropClaim.
 - **Merkle root**: Set once; optional freeze prevents any future change.
 - **Inviter binding**: Immutable after first claim; prevents inviter gaming.
-- **Mint authority**: Only AirdropClaim can mint OZTToken after `setClaimContractOnce`; AirdropClaim mints only to claimer and inviter according to fixed rules. Renouncing/transferring token owner to burn address removes all project-side control (OZT).
+- **Mint authority**: Only AirdropClaim can mint **密马.com** after `setClaimContractOnce`; AirdropClaim mints only to claimer and inviter according to fixed rules. Renouncing/transferring the token owner to the burn address removes all project-side control (OZT).

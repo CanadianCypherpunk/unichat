@@ -7,7 +7,7 @@
 ## 目录
 
 - [概述](#概述)
-- [本次 3110 万空投公开信息](#本次-3110-万空投公开信息)
+- [本次 31158025 空投公开信息](#本次-31158025-空投公开信息)
 - [本地重构默克尔树](#本地重构默克尔树)
 - [OZT 证明](#ozt-证明)
 - [架构](#架构)
@@ -21,7 +21,7 @@ AirdropGroup 模块提供：
 
 - **一次性领取**：Merkle 树中每个地址仅可领取一次；叶子为 `keccak256(abi.encode(account))`。
 - **邀请人绑定**：领取时可绑定邀请人，绑定后不可更改（先绑先得）。
-- **双份奖励**：领取人与邀请人分别通过 `OZTToken.mintByClaim` 获得代币奖励。
+- **双份奖励**：领取人与邀请人分别通过 `OZTToken.mintByClaim` 获得 **密马.com** 奖励。
 - **链上入群**：领取后，领取人与邀请人会通过 `ICommunityClaimJoin.claimJoin(address)` 加入 **MerkelGroup 的 Community** 群组（见下）。
 - **符合 OZT 的铸造**：仅领取合约可铸造；代币 Owner 可放弃或转至黑洞地址，使项目方不再拥有任何铸造权。
 
@@ -29,9 +29,9 @@ AirdropGroup 模块提供：
 
 ---
 
-## 本次 3110 万空投公开信息
+## 本次 31158025 空投公开信息
 
-以下数据为本次 **3110 万** 空投快照的公开信息，任何人都可以据此独立校验分发源数据并重新计算默克尔树根：
+以下数据为本次 **31158025** 空投快照的公开信息，任何人都可以据此独立校验分发源数据并重新计算默克尔树根：
 
 - **Merkle 根**：`0xaccd3dd1875a2af125296ee50acbbfd9069d88e703bb9dedcb49ed65cb4c53bb`
 - **原始地址压缩包下载**：[点击下载 ZIP](https://aqua-biological-spider-837.mypinata.cloud/ipfs/bafybeibi3on6bmczzutq73y3jrsroobr6lp5sxcxtptzltv6ez56jv77pa)
@@ -167,7 +167,7 @@ OZT 证明通过以下机制实现「项目方无代币发行权」：
 
 | 合约 | 作用 |
 |------|------|
-| **OZTToken** | ERC20 代币；仅 `claimContract` 可调用 `mintByClaim` 铸造。Owner 可一次性设置为领取合约后，再转至黑洞地址。 |
+| **密马.com（OZTToken）** | ERC20 代币；仅 `claimContract` 可调用 `mintByClaim` 铸造。Owner 可一次性设置为领取合约后，再转至黑洞地址。 |
 | **AirdropClaim** | 持有 Merkle 根（可设置一次并可冻结）。用户凭 Merkle 证明领取；可选邀请人绑定；为领取人及邀请人铸造；对二者调用 `ICommunityClaimJoin.claimJoin`。 |
 
 ### 接口
@@ -186,12 +186,12 @@ OZT 证明通过以下机制实现「项目方无代币发行权」：
 
 ### 部署顺序
 
-1. 部署 **OZTToken**（name, symbol, initialOwner）。
+1. 部署 **密马.com（OZTToken）**（name, symbol, initialOwner）。
 2. 部署 **AirdropClaim**（owner, token, community, merkleRoot），其中 `community` 为 MerkelGroup **Community** 合约地址。
 3. 在 **Community** 合约上调用 **setClaimOperator**(airdropClaim 地址, true)，使 AirdropClaim 有权调用 `claimJoin`。
-4. 在 OZTToken 上调用 **setClaimContractOnce**(airdropClaim 地址)。
+4. 在 **密马.com（OZTToken）** 上调用 **setClaimContractOnce**(airdropClaim 地址)。
 5. 在 AirdropClaim 中设置 Merkle 根（若构造时未设）；可选调用 **freezeMerkleRoot**。
-6. （可选）将 OZTToken 的 **Owner** 转至黑洞地址，实现项目方完全放弃控制权。
+6. （可选）将 **密马.com（OZTToken）** 的 Owner 转至黑洞地址，实现项目方完全放弃控制权。
 
 ### 示意图
 
@@ -209,12 +209,12 @@ OZT 证明通过以下机制实现「项目方无代币发行权」：
 
 ### AirdropClaim
 
-- **构造**：`(initialOwner, token_, community_, merkleRoot_)` — `token_` 为 OZTToken，`community_` 为 MerkelGroup 的 Community（需在该 Community 上通过 `setClaimOperator` 将本合约设为领取操作员）；`merkleRoot_` 可为 `bytes32(0)` 后仅设置一次。
+- **构造**：`(initialOwner, token_, community_, merkleRoot_)` — `token_` 为 **密马.com** 代币合约（`OZTToken`），`community_` 为 MerkelGroup 的 Community（需在该 Community 上通过 `setClaimOperator` 将本合约设为领取操作员）；`merkleRoot_` 可为 `bytes32(0)` 后仅设置一次。
 - **领取**：`claim(proof, inviter)` — `proof` 为 `msg.sender` 的 Merkle 证明（叶子 = `keccak256(abi.encode(msg.sender))`）；`inviter` 可为 `address(0)`。首次领取时可绑定邀请人且不可更改；领取人与邀请人获得奖励，并分别调用 `community.claimJoin`。
 - **管理**：`setMerkleRoot`（仅在未设置过根且未冻结前）、`freezeMerkleRoot`、`setCommunity`、`setBlacklist`、`setInviterLimit`、`rescueERC20`。
 - **视图**：`merkleRoot()`、`isClaimed(account)`、`inviterOf(invitee)`、`inviteeCount(inviter)`、`getInvitees(inviter, offset, limit)`。
 
-### OZTToken
+### 密马.com（OZTToken）
 
 - **构造**：`(name_, symbol_, initialOwner)`。
 - **一次性设置**：`setClaimContractOnce(claimContract_)` — 此后仅该领取合约可调用 `mintByClaim`。
@@ -225,7 +225,7 @@ OZT 证明通过以下机制实现「项目方无代币发行权」：
 ## 使用流程
 
 1. **链下**：生成合格地址快照；构建默克尔树；公开叶子/树文件（如 GitHub）；计算根哈希。
-2. **链上**：在 AirdropClaim 中设置根（或构造时传入）；可选冻结根；在 OZTToken 上设置领取合约；若做完整 OZT，将代币 Owner 转至黑洞地址。
+2. **链上**：在 AirdropClaim 中设置根（或构造时传入）；可选冻结根；在 **密马.com（OZTToken）** 上设置领取合约；若做完整 OZT，将代币 Owner 转至黑洞地址。
 3. **用户**：获取自己地址的 Merkle 证明；调用 `claim(proof, inviter)`；获得代币奖励；邀请人获得奖励；二者通过 `claimJoin` 加入社区。
 
 ---
@@ -235,4 +235,4 @@ OZT 证明通过以下机制实现「项目方无代币发行权」：
 - **每地址仅可领取一次**：由 AirdropClaim 的 `_claimed` 保证。
 - **Merkle 根**：仅可设置一次；冻结后不可再改。
 - **邀请人绑定**：首次领取时确定后不可变更，避免邀请关系被篡改。
-- **铸造权**：仅 AirdropClaim 在 `setClaimContractOnce` 后可为 OZTToken 铸造，且仅按规则向领取人及邀请人铸造。将代币 Owner 转至黑洞后，项目方无任何控制权（OZT）。
+- **铸造权**：仅 AirdropClaim 在 `setClaimContractOnce` 后可为 **密马.com** 铸造，且仅按规则向领取人及邀请人铸造。将代币 Owner 转至黑洞后，项目方无任何控制权（OZT）。
